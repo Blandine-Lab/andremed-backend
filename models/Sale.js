@@ -13,13 +13,16 @@ const saleSchema = new mongoose.Schema({
   items: [saleItemSchema],
   total: Number,
   itemsCount: Number,
-  paymentMethod: { type: String, enum: ['cash', 'mobile_money'] },
-  paymentDetails: {
-    operator: String,
-    phone: String,
-    merchant: String
+  paymentMethod: { 
+    type: String, 
+    enum: ['cash', 'mobile_money', 'bank_transfer', 'credit', 'contract'] 
   },
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  paymentDetails: mongoose.Schema.Types.Mixed,
+  comment: { type: String, default: '' },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Seller' },
+  sellerName: String,
+  buyerName: String
 }, { timestamps: true });
 
 module.exports = mongoose.model('Sale', saleSchema);

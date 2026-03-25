@@ -9,7 +9,8 @@ const productSchema = new mongoose.Schema({
   seuilAlerte: { type: Number, default: 10 },
   qrCode: { type: String, unique: true },
   storageTemp: String,
-  usage: String
+  usage: String,
+  expirationDate: { type: Date }   // <-- ligne ajoutée
 }, { timestamps: true });
 
 module.exports = mongoose.model('Product', productSchema);
