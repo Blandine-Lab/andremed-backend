@@ -3,7 +3,6 @@ const router = express.Router();
 const InventoryItem = require('../models/InventoryItem');
 const auth = require('../middleware/auth');
 
-// GET tous les items d'inventaire
 router.get('/', auth, async (req, res) => {
   try {
     const items = await InventoryItem.find().populate('productId createdBy');
@@ -13,7 +12,6 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// GET un item par ID
 router.get('/:id', auth, async (req, res) => {
   try {
     const item = await InventoryItem.findById(req.params.id).populate('productId createdBy');
@@ -24,21 +22,25 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// POST créer un item
 router.post('/', auth, async (req, res) => {
   try {
-    const newItem = new InventoryItem(req.body);
+    const userId = req.user.userId;
+    const newItem = new InventoryItem({
+      ...req.body,
+      createdBy: userId
+    });
     await newItem.save();
     res.status(201).json(newItem);
   } catch (err) {
+    console.error(err);
     res.status(400).json({ message: err.message });
   }
 });
 
-// PUT mettre à jour un item
 router.put('/:id', auth, async (req, res) => {
   try {
-    const updated = await InventoryItem.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { createdBy, ...updateData } = req.body;
+    const updated = await InventoryItem.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!updated) return res.status(404).json({ message: 'Item non trouvé' });
     res.json(updated);
   } catch (err) {
@@ -46,7 +48,6 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
-// DELETE supprimer un item
 router.delete('/:id', auth, async (req, res) => {
   try {
     const deleted = await InventoryItem.findByIdAndDelete(req.params.id);
