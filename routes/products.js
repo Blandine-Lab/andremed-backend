@@ -3,6 +3,7 @@ const router = express.Router();
 const Product = require('../models/Product');
 const auth = require('../middleware/auth');
 
+
 // GET tous les produits
 router.get('/', auth, async (req, res) => {
   try {
