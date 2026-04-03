@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const InventoryItem = require('../models/InventoryItem');
+const Sale = require('../models/Sale'); // Ajout pour calculer les sorties
 const auth = require('../middleware/auth');
 
 router.get('/', auth, async (req, res) => {
@@ -26,15 +27,59 @@ router.post('/', auth, async (req, res) => {
   try {
     console.log('=== POST /inventory-items ===');
     console.log('req.user:', req.user);
-    // Récupération robuste de l'ID utilisateur
     const userId = req.user.userId || req.user.id || req.user._id;
-    if (!userId) {
-      throw new Error('userId manquant dans le token');
-    }
+    if (!userId) throw new Error('userId manquant dans le token');
     console.log('userId extrait:', userId);
     console.log('req.body reçu:', req.body);
+
+    // Extraire les champs utiles (ignorer les anciens)
+    const {
+      productId,
+      codeProduit,
+      nomItem,           // nouveau nom
+      numeroLot,
+      datePeremption,
+      stockInitial,
+      entrees,
+      stockReel,
+      prixUnitaire,
+      month,
+      year,
+      observations
+    } = req.body;
+
+    // Calcul des sorties (quantités vendues) pour ce produit pendant le mois/année
+    const monthIndex = new Date(Date.parse(month + " 1, " + year)).getMonth();
+    const startDate = new Date(year, monthIndex, 1);
+    const endDate = new Date(year, monthIndex + 1, 0);
+    const sales = await Sale.find({
+      date: { $gte: startDate, $lte: endDate },
+      'items.productId': productId
+    });
+    let sorties = 0;
+    sales.forEach(sale => {
+      sale.items.forEach(item => {
+        if (item.productId.toString() === productId) {
+          sorties += item.cartQuantity;
+        }
+      });
+    });
+    console.log('Sorties calculées:', sorties);
+
     const newItem = new InventoryItem({
-      ...req.body,
+      productId,
+      codeProduit,
+      nomItem: nomItem || req.body.nomMedicament, // compatibilité ancien champ
+      numeroLot,
+      datePeremption,
+      stockInitial: stockInitial || 0,
+      entrees: entrees || 0,
+      sorties,
+      stockReel: stockReel || 0,
+      prixUnitaire: prixUnitaire || 0,
+      month,
+      year,
+      observations: observations || '',
       createdBy: userId
     });
     await newItem.save();

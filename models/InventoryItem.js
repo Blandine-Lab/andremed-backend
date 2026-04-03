@@ -3,13 +3,9 @@ const mongoose = require('mongoose');
 const inventoryItemSchema = new mongoose.Schema({
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
   codeProduit: { type: String, required: true },
-  nomMedicament: { type: String, required: true },
-  forme: String,
-  dosage: String,
+  nomItem: { type: String, required: true },            // était "nomMedicament"
   numeroLot: { type: String, required: true },
   datePeremption: { type: Date, required: true },
-  emplacement: String,
-  fournisseur: String,
   stockInitial: { type: Number, default: 0 },
   entrees: { type: Number, default: 0 },
   sorties: { type: Number, default: 0 },
@@ -21,14 +17,12 @@ const inventoryItemSchema = new mongoose.Schema({
   observations: String,
   month: { type: String, required: true },
   year: { type: Number, required: true },
-  qtyExpired: { type: Number, default: 0 },
-  losses: { type: Number, default: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
-// Calculs automatiques avant sauvegarde (version synchrone, pas de next)
+// Calculs automatiques avant sauvegarde
 inventoryItemSchema.pre('save', function() {
   this.stockTheorique = this.stockInitial + this.entrees - this.sorties;
   this.ecart = this.stockReel - this.stockTheorique;
