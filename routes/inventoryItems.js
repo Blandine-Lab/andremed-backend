@@ -2,22 +2,33 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 const Sale = require('../models/Sale');
+const StockMovement = require('../models/StockMovement');
 const MonthlyInventory = require('../models/MonthlyInventory');
 const auth = require('../middleware/auth');
 
-// GET /api/inventory-items/current?month=Avril&year=2026
+// Mapping des mois français vers index
+const monthIndexMap = {
+  "Janvier": 0, "Février": 1, "Mars": 2, "Avril": 3,
+  "Mai": 4, "Juin": 5, "Juillet": 6, "Août": 7,
+  "Septembre": 8, "Octobre": 9, "Novembre": 10, "Décembre": 11
+};
+
 router.get('/current', auth, async (req, res) => {
   try {
     const { month, year } = req.query;
     if (!month || !year) {
       return res.status(400).json({ message: 'Mois et année requis' });
     }
-    const products = await Product.find();
-    const monthIndex = new Date(Date.parse(month + " 1, " + year)).getMonth();
+    const monthIndex = monthIndexMap[month];
+    if (monthIndex === undefined) {
+      return res.status(400).json({ message: 'Mois invalide' });
+    }
     const startDate = new Date(year, monthIndex, 1);
     const endDate = new Date(year, monthIndex + 1, 0);
 
-    // Calcul des sorties par produit
+    const products = await Product.find();
+
+    // 1. Calcul des sorties (ventes)
     const sales = await Sale.find({
       date: { $gte: startDate, $lte: endDate }
     });
@@ -31,7 +42,18 @@ router.get('/current', auth, async (req, res) => {
       });
     });
 
-    // Récupérer les stocks réels déjà saisis pour ce mois
+    // 2. Calcul des entrées (mouvements de stock de type 'entrée')
+    const movements = await StockMovement.find({
+      type: 'entrée',
+      date: { $gte: startDate, $lte: endDate }
+    });
+    const entreesMap = {};
+    movements.forEach(m => {
+      const pid = m.productId.toString();
+      entreesMap[pid] = (entreesMap[pid] || 0) + m.quantity;
+    });
+
+    // 3. Récupérer les stocks réels déjà saisis
     const savedInventories = await MonthlyInventory.find({ month, year });
     const stockReelMap = {};
     const observationsMap = {};
@@ -41,12 +63,15 @@ router.get('/current', auth, async (req, res) => {
     });
 
     const items = products.map(product => {
-      const sorties = sortiesMap[product._id.toString()] || 0;
+      const pid = product._id.toString();
+      const sorties = sortiesMap[pid] || 0;
+      const entrees = entreesMap[pid] || 0;
       const stockInitial = product.quantity;
-      const stockTheorique = stockInitial - sorties; // sans entrées
-      const savedStockReel = stockReelMap[product._id.toString()] !== undefined ? stockReelMap[product._id.toString()] : null;
+      const stockTheorique = stockInitial + entrees - sorties;
+      const savedStockReel = stockReelMap[pid] !== undefined ? stockReelMap[pid] : null;
       const ecart = savedStockReel !== null ? savedStockReel - stockTheorique : null;
       const valeurTotale = savedStockReel !== null ? savedStockReel * product.price : null;
+
       return {
         productId: product._id,
         codeProduit: product.codeProduit || '',
@@ -54,7 +79,7 @@ router.get('/current', auth, async (req, res) => {
         numeroLot: 'N/A',
         datePeremption: product.expirationDate,
         stockInitial,
-        entrees: 0, // à calculer si vous avez des mouvements d'entrée
+        entrees,
         sorties,
         stockTheorique,
         stockReel: savedStockReel,
@@ -63,7 +88,7 @@ router.get('/current', auth, async (req, res) => {
         valeurTotale,
         month,
         year,
-        observations: observationsMap[product._id.toString()] || ''
+        observations: observationsMap[pid] || ''
       };
     });
     res.json(items);
@@ -73,7 +98,7 @@ router.get('/current', auth, async (req, res) => {
   }
 });
 
-// POST /api/inventory-items/save
+// POST /api/inventory-items/save (identique)
 router.post('/save', auth, async (req, res) => {
   try {
     const { month, year, items } = req.body;
@@ -91,8 +116,5 @@ router.post('/save', auth, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-
-// Optionnel : garder les anciennes routes si nécessaire (commentées)
-// router.get('/', auth, ...) etc.
 
 module.exports = router;
