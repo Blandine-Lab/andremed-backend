@@ -1,7 +1,7 @@
 // backend/routes/chat.js
 const express = require('express');
 const router = express.Router();
-const fetch = require('node-fetch');
+const axios = require('axios');
 
 // Configuration Telegram
 const TELEGRAM_BOT_TOKEN = '8570394266:AAE1_Az0Hzot09m8u3s4Ml-EUMHQjgqunwY';
@@ -30,35 +30,25 @@ router.post('/send', async (req, res) => {
 ⚠️ POUR RÉPONDRE, TAPEZ:
 /reply_${clientChatId} Votre message ici`;
 
-    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    const response = await axios.post(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
         chat_id: GROUP_CHAT_ID,
         text: supportMessageText,
         parse_mode: 'Markdown'
-      }),
+      }
+    );
+
+    res.json({ 
+      success: true, 
+      messageId: response.data.message_id, 
+      userId: clientChatId 
     });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      res.json({ 
-        success: true, 
-        messageId: data.message_id, 
-        userId: clientChatId 
-      });
-    } else {
-      res.status(500).json({ 
-        success: false, 
-        error: data.description || 'Erreur Telegram' 
-      });
-    }
   } catch (error) {
     console.error('Erreur Telegram proxy:', error);
     res.status(500).json({ 
       success: false, 
-      error: error.message 
+      error: error.response?.data?.description || error.message 
     });
   }
 });
@@ -66,9 +56,10 @@ router.post('/send', async (req, res) => {
 // ✅ Récupérer les réponses depuis Telegram
 router.get('/updates', async (req, res) => {
   try {
-    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates`);
-    const data = await response.json();
-    res.json(data);
+    const response = await axios.get(
+      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates`
+    );
+    res.json(response.data);
   } catch (error) {
     console.error('Erreur getUpdates:', error);
     res.status(500).json({ 
