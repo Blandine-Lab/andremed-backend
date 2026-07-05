@@ -1,4 +1,5 @@
-﻿require('dotenv').config();
+// backend/server.js
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
@@ -19,12 +20,14 @@ app.use('/api/shops', require('./routes/shops'));
 app.use('/api/movements', require('./routes/movements'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/inventories', require('./routes/inventories'));
-app.use('/api/inventory-items', require('./routes/inventoryItems')); // <-- NOUVELLE ROUTE
+app.use('/api/inventory-items', require('./routes/inventoryItems'));
 app.use('/api/reports', require('./routes/reports'));
-app.use('/api/settings', require('./routes/settings')); // for logo
+app.use('/api/settings', require('./routes/settings'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/sellers', require('./routes/sellers'));
-app.use('/api/sellers', require('./routes/sellers')); // new sellers route (doublon facultatif)
+
+// ✅ NOUVELLE ROUTE : Chat
+app.use('/api/chat', require('./routes/chat'));
 
 // Route de test
 app.get('/api/test', (req, res) => {
@@ -32,4 +35,4 @@ app.get('/api/test', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Serveur démarré sur le port ${PORT}`));
